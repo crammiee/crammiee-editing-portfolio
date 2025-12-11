@@ -1,0 +1,49 @@
+{
+  "kind": "collectionType",
+  "collectionName": "video_entries",
+  "info": {
+    "singularName": "video-entry",
+    "pluralName": "video-entries",
+    "displayName": "VideoEntry"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "platform": {
+      "type": "enumeration",
+      "required": true,
+      "enum": [
+        "youtube",
+        "tiktok",
+        "instagram",
+        "facebook"
+      ]
+    },
+    "embedUrl": {
+      "type": "string",
+      "required": false
+    },
+    "niche": {
+      "type": "enumeration",
+      "enum": [
+        "gaming",
+        "motion_graphics",
+        "education",
+        "entertainment",
+        "other"
+      ]
+    },
+    "client": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::client.client",
+      "inversedBy": "video_entries"
+    }
+  }
+}
