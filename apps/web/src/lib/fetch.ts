@@ -1,4 +1,3 @@
-// src/lib/fetch.ts
 import { z } from "zod";
 import {
   Client,
@@ -9,6 +8,9 @@ import {
   StrapiTestimonialSchema,
   StrapiResponseSchema,
 } from "./schemas";
+import { normalizeClient } from "./schemas/client";
+import { normalizeVideoEntry } from "./schemas/videoEntry";
+import { normalizeTestimonial } from "./schemas/testimonial";
 
 const STRAPI_URL = process.env.STRAPI_URL!;
 const STRAPI_API_TOKEN = process.env.STRAPI_API_TOKEN!;
@@ -39,81 +41,41 @@ async function get<T>(path: string, schema: z.ZodType<T>): Promise<T> {
   return parsed.data;
 }
 
-// helpers
-
-function blocksToText(b: unknown): string {
-  if (Array.isArray(b)) {
-    return b
-      .map((node) => {
-        if (node && typeof node === "object") {
-          const maybeNode = node as { text?: string; children?: { text?: string }[] };
-          const text =
-            maybeNode.text ??
-            (Array.isArray(maybeNode.children)
-              ? maybeNode.children.map((c) => c.text ?? "").filter(Boolean).join(" ")
-              : "");
-          return text || "";
-        }
-        return "";
-      })
-      .filter(Boolean)
-      .join("\n")
-      .trim();
-  }
-  return typeof b === "string" ? b : "";
+/**
+ * Generic collection fetcher
+ */
+async function fetchCollection<T extends { data: Raw[] }, Raw, U>(
+  path: string,
+  schema: z.ZodType<T>,
+  normalize: (raw: Raw) => U
+): Promise<U[]> {
+  const raw = await get(path, schema);
+  return raw.data.map(normalize);
 }
 
 
 // Normalized API
 
 export async function fetchClients(): Promise<Client[]> {
-  const raw = await get(
+  return fetchCollection(
     "/api/clients?populate=*",
-    StrapiResponseSchema(StrapiClientSchema)
+    StrapiResponseSchema(StrapiClientSchema),
+    normalizeClient
   );
-
-  return raw.data.map((entry) => ({
-    id: entry.id,
-    name: entry.Name,
-    socialUrl: entry.socialUrl,
-    avatarUrl: entry.avatar?.url,
-    videos:
-      entry.video_entries?.map((v) => ({
-        id: v.id,
-        title: v.title,
-        platform: v.platform,
-        embedUrl: v.embedUrl,
-        niche: v.niche,
-      })) ?? [],
-  }));
 }
 
 export async function fetchVideos(): Promise<VideoEntry[]> {
-  const raw = await get(
+  return fetchCollection(
     "/api/video-entries?populate=*",
-    StrapiResponseSchema(StrapiVideoEntrySchema)
+    StrapiResponseSchema(StrapiVideoEntrySchema),
+    normalizeVideoEntry
   );
-  return raw.data.map((entry) => ({
-    id: entry.id,
-    title: entry.title,
-    platform: entry.platform,
-    embedUrl: entry.embedUrl,
-    niche: entry.niche,
-  }));
 }
 
 export async function fetchTestimonials(): Promise<Testimonial[]> {
-  const raw = await get(
+  return fetchCollection(
     "/api/testimonials?populate=*",
-    StrapiResponseSchema(StrapiTestimonialSchema)
+    StrapiResponseSchema(StrapiTestimonialSchema),
+    normalizeTestimonial
   );
-
-  return raw.data.map((t) => ({
-    id: t.id,
-    clientName: t.clientName,
-    role: t.role ?? undefined,
-    quote: blocksToText(t.quote),
-    avatarUrls: (t.avatar ?? []).map((m) => m.url),
-  }));
 }
-
